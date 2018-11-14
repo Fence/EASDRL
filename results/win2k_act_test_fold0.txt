@@ -1,0 +1,136 @@
+
+ Arguments:
+action_rate: 0.1
+agent_mode: act
+batch_size: 32
+context_len: 100
+dense_dim: 256
+dis_dim: 50
+display_training_result: 1
+domain: win2k
+dropout: 0.5
+end_fold: 5
+epochs: 20
+exploration_decay_steps: 1000
+exploration_rate_end: 0.1
+exploration_rate_start: 1
+exploration_rate_test: 0.0
+filter_act_idx: 1
+fold_id: 0
+gamma: 0.9
+gpu_fraction: 0.24
+gui_mode: False
+k_fold: 5
+k_fold_indices: data/indices/win2k_act_5_fold_indices.pkl
+learning_rate: 0.001
+load_replay: 0
+load_weights: False
+model_dim: 50
+num_actions: 2
+num_filters: 32
+num_words: 500
+object_rate: 0.07
+optimizer: adam
+positive_rate: 0.9
+priority: 1
+random_play: 0
+replay_size: 50000
+result_dir: results/win2k_act_test
+reward_assign: [1, 2, 3]
+reward_base: 50.0
+save_replay: 0
+save_replay_name: data/saved_replay_memory.pkl
+save_replay_size: 1000
+save_weights: True
+start_epoch: 0
+start_fold: 0
+stop_epoch_gap: 5
+tag_dim: 50
+target_steps: 5
+train_episodes: 50
+train_frequency: 1
+train_repeat: 1
+train_steps: 62000
+use_act_rate: 1
+valid_steps: 15000
+word2vec: <gensim.models.keyedvectors.Word2VecKeyedVectors object at 0x7f77d4d84b90>
+word_dim: 50
+
+
+
+Summary:
+total_rqs: 250	 right_rqs: 215	 tagged_rqs: 245
+total_ops: 14	 right_ops: 14	 tagged_ops: 14
+total_ecs: 0	 right_ecs: 0	 tagged_ecs: 0
+total_act: 264	 right_act: 229	 tagged_act: 259
+acc: 0.953770	 rec: 0.867424	 pre: 0.884170	 f1: 0.875717
+pre: [0.8775510204081632, 1.0, 0.0, 0.8841698841698842]
+rec: [0.86, 1.0, 0.0, 0.8674242424242424]
+f1: [0.8686868686868686, 1.0, 0.0, 0.875717017208413]
+
+cumulative reward: 72934.909000	 average reward: 51.874046
+
+
+Summary:
+total_rqs: 250	 right_rqs: 218	 tagged_rqs: 240
+total_ops: 13	 right_ops: 13	 tagged_ops: 13
+total_ecs: 0	 right_ecs: 0	 tagged_ecs: 0
+total_act: 263	 right_act: 231	 tagged_act: 253
+acc: 0.960882	 rec: 0.878327	 pre: 0.913043	 f1: 0.895349
+pre: [0.9083333333333333, 1.0, 0.0, 0.9130434782608695]
+rec: [0.872, 1.0, 0.0, 0.8783269961977186]
+f1: [0.889795918367347, 1.0, 0.0, 0.8953488372093023]
+
+cumulative reward: 74282.902000	 average reward: 52.832789
+
+
+Summary:
+total_rqs: 250	 right_rqs: 217	 tagged_rqs: 238
+total_ops: 13	 right_ops: 13	 tagged_ops: 13
+total_ecs: 0	 right_ecs: 0	 tagged_ecs: 0
+total_act: 263	 right_act: 230	 tagged_act: 251
+acc: 0.960882	 rec: 0.874525	 pre: 0.916335	 f1: 0.894942
+pre: [0.9117647058823529, 1.0, 0.0, 0.9163346613545816]
+rec: [0.868, 1.0, 0.0, 0.8745247148288974]
+f1: [0.889344262295082, 1.0, 0.0, 0.8949416342412452]
+
+cumulative reward: 74177.065000	 average reward: 52.757514
+
+
+Summary:
+total_rqs: 250	 right_rqs: 215	 tagged_rqs: 236
+total_ops: 13	 right_ops: 13	 tagged_ops: 13
+total_ecs: 0	 right_ecs: 0	 tagged_ecs: 0
+total_act: 263	 right_act: 228	 tagged_act: 249
+acc: 0.959459	 rec: 0.866920	 pre: 0.915663	 f1: 0.890625
+pre: [0.9110169491525424, 1.0, 0.0, 0.9156626506024096]
+rec: [0.86, 1.0, 0.0, 0.8669201520912547]
+f1: [0.8847736625514404, 1.0, 0.0, 0.8906249999999999]
+
+cumulative reward: 73776.748000	 average reward: 52.472794
+
+
+Summary:
+total_rqs: 250	 right_rqs: 220	 tagged_rqs: 245
+total_ops: 13	 right_ops: 13	 tagged_ops: 13
+total_ecs: 0	 right_ecs: 0	 tagged_ecs: 0
+total_act: 263	 right_act: 233	 tagged_act: 258
+acc: 0.960171	 rec: 0.885932	 pre: 0.903101	 f1: 0.894434
+pre: [0.8979591836734694, 1.0, 0.0, 0.9031007751937985]
+rec: [0.88, 1.0, 0.0, 0.8859315589353612]
+f1: [0.888888888888889, 1.0, 0.0, 0.8944337811900194]
+
+cumulative reward: 74382.382000	 average reward: 52.903543
+
+
+Summary:
+total_rqs: 250	 right_rqs: 219	 tagged_rqs: 238
+total_ops: 13	 right_ops: 13	 tagged_ops: 13
+total_ecs: 0	 right_ecs: 0	 tagged_ecs: 0
+total_act: 263	 right_act: 232	 tagged_act: 251
+acc: 0.963727	 rec: 0.882129	 pre: 0.924303	 f1: 0.902724
+pre: [0.9201680672268907, 1.0, 0.0, 0.9243027888446215]
+rec: [0.876, 1.0, 0.0, 0.8821292775665399]
+f1: [0.8975409836065573, 1.0, 0.0, 0.9027237354085602]
+
+cumulative reward: 74780.597000	 average reward: 53.186769
