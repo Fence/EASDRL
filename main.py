@@ -1,4 +1,4 @@
-#coding:utf-8
+# coding:utf-8
 import os
 import sys
 import time
@@ -10,18 +10,18 @@ import tensorflow as tf
 from utils import get_time, plot_results
 from Agent import Agent
 from EADQN import DeepQLearner
-#from KerasEADQN import DeepQLearner
+# from KerasEADQN import DeepQLearner
 from Environment import Environment
 from ReplayMemory import ReplayMemory
 from gensim.models import KeyedVectors
-#from keras.backend.tensorflow_backend import set_session
+# from keras.backend.tensorflow_backend import set_session
 
 
 def preset_args():
     parser = argparse.ArgumentParser()
 
     envarg = parser.add_argument_group('Environment')
-    envarg.add_argument("--domain",         type=str,   default='win2k', help="")
+    envarg.add_argument("--domain",         type=str,   default='cooking', help="")
     envarg.add_argument("--model_dim",      type=str,   default=50, help="")
     envarg.add_argument("--num_words",      type=int,   default=500, help="")
     envarg.add_argument("--word_dim",       type=int,   default=50, help="")
@@ -79,8 +79,8 @@ def preset_args():
     mainarg.add_argument("--start_fold",            type=int,   default=0,      help='')
     mainarg.add_argument("--end_fold",              type=int,   default=5,      help='')
     mainarg.add_argument("--k_fold",                type=int,   default=5,      help="")
-    mainarg.add_argument("--result_dir",            type=str,   default="test2", help="")
-    mainarg.add_argument("--agent_mode",            type=str,   default='arg',  help='')
+    mainarg.add_argument("--result_dir",            type=str,   default="test", help="")
+    mainarg.add_argument("--agent_mode",            type=str,   default='act',  help='')
     
     return parser.parse_args()
 
@@ -109,13 +109,13 @@ def main(args):
     for fi in range(args.start_fold, args.end_fold):
         fold_start = time.time()
         args.fold_id = fi
-        #Initial environment, replay memory, deep_q_net and agent
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=args.gpu_fraction)
-        #set_session(tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)))
+        # set_session(tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))) # for keras
 
         with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
-            #ipdb.set_trace()
-            env_act = Environment(args)
+            # ipdb.set_trace()
+            # Initial environment, replay memory, deep_q_net and agent
+            env_act = Environment(args, args.agent_mode)
             net_act = DeepQLearner(args, sess, args.agent_mode)
             mem_act = ReplayMemory(args, args.agent_mode)
             agent = Agent(env_act, mem_act, net_act, args)

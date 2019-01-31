@@ -1,4 +1,4 @@
-#coding:utf-8
+# coding:utf-8
 import re
 import ipdb
 import time
@@ -8,7 +8,7 @@ from utils import ten_fold_split_ind, index2data
 
 
 class Environment:
-    def __init__(self, args):
+    def __init__(self, args, agent_mode):
         print('Initializing the Environment...')  
         self.domain = args.domain
         self.dis_dim = args.dis_dim
@@ -30,17 +30,17 @@ class Environment:
         self.valid_epoch_end_flag = False
         self.max_data_char_len = 0
         self.max_data_sent_len = 0
-        self.agent_mode = args.agent_mode
+        self.agent_mode = agent_mode # args.agent_mode
         if not args.gui_mode:
             if self.agent_mode == 'arg':
                 self.read_arg_sents()
             else:
                 self.read_act_texts()
-        args.train_steps = self.train_steps
-        args.valid_steps = self.valid_steps
+            args.train_steps = self.train_steps
+            args.valid_steps = self.valid_steps
         
 
-    def init_predict_text(self, raw_text):
+    def init_predict_act_text(self, raw_text):
         #ipdb.set_trace()
         #raw_text = re.sub(r'\n|\r|\(|\)|,|;', ' ', raw_text)
         #raw_text = re.split(r'\. |\? |\! ', raw_text)
@@ -65,7 +65,44 @@ class Environment:
         self.current_text = text
 
 
-    def act_text(self, action, word_ind):
+    def init_predict_arg_text(self, act_idx, text):
+        self.terminal_flag = False
+        sents = text['sents']
+        word2sent = text['word2sent']
+        sent_idx = word2sent[act_idx][0]
+        word_ids = []
+        this_sent = sents[sent_idx]
+        if sent_idx > 0: # use the former sentence and current one
+            last_sent = sents[sent_idx - 1]
+            for k, v in word2sent.iteritems():
+                if v[0] == sent_idx or v[0] == sent_idx - 1:
+                    word_ids.append(k)
+        else:
+            last_sent = []
+            for k, v in word2sent.iteritems():
+                if v[0] == sent_idx:
+                    word_ids.append(k)
+        words = last_sent + this_sent + ['UNKNOWN_TOKEN']
+        end_idx = max(word_ids) # the last index of words of these two sents
+        start_idx = min(word_ids)
+        sent_len = len(words)
+
+        position = np.zeros(sent_len, dtype=np.int32)
+        position.fill(act_idx - start_idx)
+        distance = np.abs(np.arange(sent_len) - position)
+        sent_vec = np.zeros([self.context_len, self.emb_dim])
+        for i, w in enumerate(words):
+            if i >= self.context_len:
+                break
+            if w in self.word2vec.vocab:
+                sent_vec[i][: self.word_dim] = self.word2vec[w]
+            sent_vec[i][self.word_dim: self.word_dim + self.dis_dim] = distance[i]
+        self.state = sent_vec
+        self.current_text = {'tokens': words, 'word2sent': word2sent, 'distance': distance}
+        return last_sent, this_sent
+
+
+    def act_online(self, action, word_ind):
         self.state[word_ind, -1] = action + 1
         if word_ind + 1 >= len(self.current_text['tokens']):
             self.terminal_flag = True

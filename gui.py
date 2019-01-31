@@ -5,70 +5,116 @@ import ipdb
 import pickle
 import argparse
 import wx.lib.buttons as buttons
+import tensorflow as tf
+
 from utils import get_time
+from main import preset_args, args_init
+# from EADQN import DeepQLearner
+from KerasEADQN import DeepQLearner
+from Environment import Environment
+from ReplayMemory import ReplayMemory
+from gensim.models import KeyedVectors
+from keras.backend.tensorflow_backend import set_session
 
 
-def EASDRL_init():
-    import tensorflow as tf
-    from main import preset_args, args_init
-    from Agent import Agent
-    from MultiAgent import MultiAgent
-    from KerasEADQN import DeepQLearner
-    from Environment import Environment
-    from AFEnvironment import AFEnvironment
-    from ReplayMemory import ReplayMemory
-    from gensim.models import KeyedVectors
-    from keras.backend.tensorflow_backend import set_session
-    args = preset_args()
+class Agent(object):
+    """docstring for Agent"""
+    def __init__(self, args, sess):
+        self.env_act = Environment(args, 'act')
+        self.net_act = DeepQLearner(args, 'act')
+        # self.net_act = DeepQLearner(args, sess, 'act') # for tensorflow
+        self.env_arg = Environment(args, 'arg')
+        self.net_arg = DeepQLearner(args, 'arg')
+        # self.net_arg = DeepQLearner(args, sess, 'arg') # for tensorflow
+        self.num_words = args.num_words
+
+
+    def predict(self, text):
+        # e.g. text = ['Cook the rice the day before.', 'Use leftover rice.']
+        self.env_act.init_predict_act_text(text)
+        # act_seq = []
+        sents = []
+        for i in range(len(self.env_act.current_text['sents'])):
+            last_sent = self.env_act.current_text['sents'][i - 1] if i > 0 else []
+            this_sent = self.env_act.current_text['sents'][i]
+            sents.append({'last_sent': last_sent, 'this_sent': this_sent, 'acts': []})
+        # ipdb.set_trace()
+        for i in range(self.num_words):
+            state_act = self.env_act.getState()
+            qvalues_act = self.net_act.predict(state_act)
+            action_act = np.argmax(qvalues_act[0])
+            self.env_act.act_online(action_act, i)
+            if action_act == 1:
+                last_sent, this_sent = self.env_obj.init_predict_arg_text(i, self.env_act.current_text)
+                for j in range(self.context_len):
+                    state_obj = self.env_obj.getState()
+                    qvalues_obj = self.net_obj.predict(state_obj)
+                    action_obj = np.argmax(qvalues_obj[0])
+                    self.env_obj.act_online(action_obj, j)
+                    if self.env_obj.terminal_flag:
+                        break
+                # act_name = self.env_act.current_text['tokens'][i]
+                # act_obj = [act_name]
+                act_idx = i
+                obj_idxs = []
+                sent_words = self.env_obj.current_text['tokens']
+                tmp_num = self.context_len if len(sent_words) >= self.context_len else len(sent_words)
+                for j in range(tmp_num):
+                    if self.env_obj.state[j, -1] == 2:
+                        #act_obj.append(sent_words[j])
+                        if j == len(sent_words) - 1:
+                            j = -1
+                        obj_idxs.append(j)
+                if len(obj_idxs) == 0:
+                    # act_obj.append(sent_words[-1])
+                    obj_idxs.append(-1)
+                # ipdb.set_trace()
+                si, ai = self.env_act.current_text['word2sent'][i]
+                ai += len(sents[si]['last_sent'])
+                sents[si]['acts'].append({'act_idx': ai, 'obj_idxs': [obj_idxs, []],
+                                            'act_type': 1, 'related_acts': []})
+                # act_seq.append(act_obj)
+            if self.env_act.terminal_flag:
+                break
+        # for k, v in act_seq.iteritems():
+        #     print(k, v)
+        # ipdb.set_trace()
+        return sents
+        
+
+
+def EASDRL_init(args, sess):
     args.gui_mode = True
     args.fold_id = 0
-    args.actionDB = 'cooking'
-    args.agent_mode = 'multi'
+    args.domain = 'cooking'
     args.replay_size = 1000
-    args.gpu_rate = 0.1
     args.load_weights = 'weights'
     args = args_init(args)
-    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=args.gpu_rate)
-    set_session(tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)))
-    # args.optimizer = 'rmsprop'
-    # args.positive_rate = 0.6
-    # args.learning_rate = 0.001
-    env_act = Environment(args)
-    net_act = DeepQLearner(args, 'act')
-
-    mem_act = ReplayMemory(args, 'act')
-    # args.optimizer = 'adadelta'
-    # args.positive_rate = 0.6
-    env_obj = AFEnvironment(args)
-    net_obj = DeepQLearner(args, 'arg')
-    mem_obj = ReplayMemory(args, 'arg')
-    agent = MultiAgent(env_act, env_obj, mem_act, mem_obj, net_act, net_obj, args)
-    #ipdb.set_trace()
+    
+    # ipdb.set_trace()
+    agent = Agent(args, sess)
 
     if args.load_weights:
         print('Loading weights ...')
-        if args.actionDB == 'all':
-            filename = 'weights/online_test/%s/eas/k%d_fold%d.h5' % (args.actionDB, args.k_fold, args.fold_id)
-            net_act.load_weights(filename)
-            filename = 'weights/online_test/%s/af/k%d_fold%d.h5' % (args.actionDB, args.k_fold, args.fold_id)
-            net_obj.load_weights(filename)
+        if args.domain == 'all':
+            filename = 'weights/online_test/%s/act/k%d_fold%d.h5' % (args.domain, args.k_fold, args.fold_id)
+            agent.net_act.load_weights(filename)
+            filename = 'weights/online_test/%s/arg/k%d_fold%d.h5' % (args.domain, args.k_fold, args.fold_id)
+            agent.net_arg.load_weights(filename)
         else:
-            filename = 'data/online_test/%s/eas/fold%d.h5' % (args.actionDB, args.fold_id)
-            net_act.load_weights(filename)
-            filename = 'data/online_test/%s/af/fold%d.h5' % (args.actionDB, args.fold_id)
-            net_obj.load_weights(filename)
+            filename = 'data/online_test/%s/act/fold%d.h5' % (args.domain, args.fold_id)
+            agent.net_act.load_weights(filename)
+            filename = 'data/online_test/%s/arg/fold%d.h5' % (args.domain, args.fold_id)
+            agent.net_arg.load_weights(filename)
 
-    #raw_text = open('data/online_test/test.txt').read()
-    #raw_text = re.sub(r'\n|\r|\(|\)|,|;', ' ', raw_text)
-    #text = re.split(r'\. |\? |\! ', raw_text)
-    #agent.predict(text)
     return agent
+
 
 
 
 class EASGUI(wx.Frame):
     """docstring for EASGUI"""
-    def __init__(self):
+    def __init__(self, agent):
         wx.Frame.__init__(self, None, -1, "Action Sequence Extraction")
         self.panel = wx.Panel(self)
         self.font_size = 12
@@ -83,21 +129,21 @@ class EASGUI(wx.Frame):
  
         in_box = self.create_static_sizer('Input Texts', self.in_text)
         out1_box = self.create_static_sizer('Output Results', self.out1_text)
-        #out2_box = self.create_static_sizer('Action Sequence', self.out2_text)
+        # out2_box = self.create_static_sizer('Action Sequence', self.out2_text)
         choice_box = self.create_boxsizer([self.show_name('Act/Arg:'), self.act_obj_choice])
         type_box = self.create_boxsizer([self.show_name('ActType/ArgType:'), self.item_type])
-        #act_box = self.create_boxsizer([self.show_name('ActSeqNum:'), self.act_idx_in])
+        # act_box = self.create_boxsizer([self.show_name('ActSeqNum:'), self.act_idx_in])
         sent_box = self.create_boxsizer([self.show_name('SentId:'), self.sent_idx_in])
         word_box = self.create_boxsizer([self.show_name('ActId/ArgId:'), self.word_idx_in])
         related_si_box = self.create_boxsizer([self.show_name('ExSentId:'), self.related_sent_idx])
         related_it_box = self.create_boxsizer([self.show_name('ExActId/ExArgId:'), self.related_item])
-        #revise_boxes = self.create_boxsizer(
+        # revise_boxes = self.create_boxsizer(
         #    [choice_box, type_box, act_box, sent_box, word_box, related_si_box, related_it_box], gap=0, direction=wx.HORIZONTAL)
 
 
         main_sizer = wx.BoxSizer(wx.VERTICAL)
         main_sizer.Add(self.create_boxsizer([in_box, out1_box]), 0, wx.EXPAND, 1) 
-        #main_sizer.Add(self.create_boxsizer([revise_boxes, out2_box]), 0, wx.EXPAND, 1)
+        # main_sizer.Add(self.create_boxsizer([revise_boxes, out2_box]), 0, wx.EXPAND, 1)
         main_sizer.Add(self.create_boxsizer([choice_box, type_box]), 0, wx.EXPAND, 1)
         main_sizer.Add(self.create_boxsizer([sent_box, word_box]), 0, wx.EXPAND, 1)
         main_sizer.Add(self.create_boxsizer([related_si_box, related_it_box]), 0, wx.EXPAND, 1)
@@ -105,7 +151,7 @@ class EASGUI(wx.Frame):
             [ext_button, del_button, rvs_button, ins_button, qit_button]), 0, wx.EXPAND, 1)
         self.panel.SetSizer(main_sizer)
         main_sizer.Fit(self)
-        self.agent = EASDRL_init()
+        self.agent = agent # EASDRL_init()
         self.data = []
         self.current_sents = []
         self.act2sent = {}
@@ -114,11 +160,11 @@ class EASGUI(wx.Frame):
     def create_io_text_ctrl(self):
         self.in_text = self.create_textbox((400, 400))
         self.out1_text = self.create_textbox((400, 400), style=wx.TE_MULTILINE)# | wx.TE_READONLY)
-        #self.out2_text = self.create_textbox((400, 200), style=wx.TE_MULTILINE)# | wx.TE_READONLY)
+        # self.out2_text = self.create_textbox((400, 200), style=wx.TE_MULTILINE)# | wx.TE_READONLY)
         self.act_obj_choice = self.create_textbox(style=wx.TE_LEFT)
         self.item_type = self.create_textbox(style=wx.TE_LEFT)
         self.item_type.SetValue('1')
-        #self.act_idx_in = self.create_textbox(style=wx.TE_LEFT)
+        # self.act_idx_in = self.create_textbox(style=wx.TE_LEFT)
         self.sent_idx_in = self.create_textbox(style=wx.TE_LEFT)
         self.word_idx_in = self.create_textbox(style=wx.TE_LEFT)
         self.related_sent_idx = self.create_textbox(style=wx.TE_LEFT)
@@ -165,12 +211,12 @@ class EASGUI(wx.Frame):
 
 
     def show_results(self):
-        #ipdb.set_trace()
+        # ipdb.set_trace()
         self.out1_text.Clear()
-        #self.out2_text.Clear()
+        # self.out2_text.Clear()
         out1_start = self.out1_text.GetInsertionPoint()
-        #out2_start = self.out2_text.GetInsertionPoint()
-        #self.out2_text.AppendText('\n')
+        # out2_start = self.out2_text.GetInsertionPoint()
+        # self.out2_text.AppendText('\n')
         count_act = 0
         act2sent = {}
         sents = self.current_sents
@@ -180,7 +226,7 @@ class EASGUI(wx.Frame):
             for j, w in enumerate(sents[i]['this_sent']):
                 self.out1_text.AppendText('%s(%d) '%(w, j + 1))
             self.out1_text.AppendText('\n')
-            #self.out1_text.AppendText('NO%d: %s\n'%(i, ' '.join(sents[i]['this_sent'])))
+            # self.out1_text.AppendText('NO%d: %s\n'%(i, ' '.join(sents[i]['this_sent'])))
             for k, act in enumerate(sents[i]['acts']):
                 objs = []
                 for oi in act['obj_idxs'][0]+act['obj_idxs'][1]:
@@ -191,18 +237,18 @@ class EASGUI(wx.Frame):
                 act2sent[count_act] = [i, k]
                 self.out1_text.AppendText(
                     '<%d>  %s (%s)    '%(count_act + 1, words[act['act_idx']], ', '.join(objs)))
-                #self.out2_text.AppendText(
+                # self.out2_text.AppendText(
                 #    '<%d>  %s (%s)\n'%(count_act + 1, words[act['act_idx']], ', '.join(objs)))
                 count_act += 1
             if len(sents[i]['acts']) > 0:
                 self.out1_text.AppendText('\n')
         self.act2sent = act2sent
         self.out1_text.ShowPosition(out1_start)
-        #self.out2_text.ShowPosition(out2_start)
+        # self.out2_text.ShowPosition(out2_start)
 
 
     def OnExtract(self, event):
-        #ipdb.set_trace()
+        # ipdb.set_trace()
         if len(self.current_sents) > 0:
             self.data.append(self.current_sents)
         raw_text = self.in_text.GetValue() + ' '
@@ -229,7 +275,7 @@ class EASGUI(wx.Frame):
         act_idx = int(act_idx.split()[0])
         if act_idx >= len(self.act2sent):
             return
-        #ipdb.set_trace()
+        # ipdb.set_trace()
         si, ai = self.act2sent[act_idx]
         self.current_sents[si]['acts'].pop(ai)
         self.show_results()
@@ -274,7 +320,7 @@ class EASGUI(wx.Frame):
                         self.current_sents[si]['acts'][ai]['related_acts'].append(ra + bias)
             self.show_results()
         elif choice in ['a', 'A', '1']: # for obj
-            #ipdb.set_trace()
+            # ipdb.set_trace()
             act_idx = int(act_idx)
             item_type = int(item_type)
             si, ai = self.act2sent[act_idx]
@@ -336,7 +382,7 @@ class EASGUI(wx.Frame):
         related_sent_idx = self.related_sent_idx.GetValue().strip()
         related_item = self.related_item.GetValue().split()
         self.clear_boxes()
-        #ipdb.set_trace()
+        # ipdb.set_trace()
         if choice in ['a', '0']:
             sent_idx = int(sent_idx)
             word_ids = int(word_ids[0])
@@ -420,12 +466,13 @@ class EASGUI(wx.Frame):
 
 
 class MyApp(wx.App):
-    def __init__(self, redirect=True):
+    def __init__(self, redirect=True, agent=''):
         c_time = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))
         wx.App.__init__(self, redirect)
+        self.agent = agent
         
     def OnInit(self):
-        self.frame = EASGUI()
+        self.frame = EASGUI(self.agent)
         self.frame.Show()
         return True
     
@@ -436,6 +483,10 @@ class MyApp(wx.App):
 
         
 if __name__ == '__main__':
-    #EASDRL_init()
-    app = MyApp(redirect=False)
+    args = preset_args()
+    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=args.gpu_fraction)
+    set_session(tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)))
+    # with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess: # for tensorflow
+    agent = EASDRL_init(args, sess='') # for keras 
+    app = MyApp(redirect=False, agent=agent)
     app.MainLoop()    
