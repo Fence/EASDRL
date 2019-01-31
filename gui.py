@@ -6,6 +6,7 @@ import pickle
 import argparse
 import wx.lib.buttons as buttons
 import tensorflow as tf
+import numpy as np
 
 from utils import get_time
 from main import preset_args, args_init
@@ -14,6 +15,7 @@ from KerasEADQN import DeepQLearner
 from Environment import Environment
 from ReplayMemory import ReplayMemory
 from gensim.models import KeyedVectors
+from keras import backend as K
 from keras.backend.tensorflow_backend import set_session
 
 
@@ -21,12 +23,13 @@ class Agent(object):
     """docstring for Agent"""
     def __init__(self, args, sess):
         self.env_act = Environment(args, 'act')
-        self.net_act = DeepQLearner(args, 'act')
+        self.net_act = DeepQLearner(args, 'act', 'channels_first')
         # self.net_act = DeepQLearner(args, sess, 'act') # for tensorflow
         self.env_arg = Environment(args, 'arg')
-        self.net_arg = DeepQLearner(args, 'arg')
+        self.net_arg = DeepQLearner(args, 'arg', 'channels_first')
         # self.net_arg = DeepQLearner(args, sess, 'arg') # for tensorflow
         self.num_words = args.num_words
+        self.context_len = args.context_len
 
 
     def predict(self, text):
@@ -45,35 +48,35 @@ class Agent(object):
             action_act = np.argmax(qvalues_act[0])
             self.env_act.act_online(action_act, i)
             if action_act == 1:
-                last_sent, this_sent = self.env_obj.init_predict_arg_text(i, self.env_act.current_text)
+                last_sent, this_sent = self.env_arg.init_predict_arg_text(i, self.env_act.current_text)
                 for j in range(self.context_len):
-                    state_obj = self.env_obj.getState()
-                    qvalues_obj = self.net_obj.predict(state_obj)
-                    action_obj = np.argmax(qvalues_obj[0])
-                    self.env_obj.act_online(action_obj, j)
-                    if self.env_obj.terminal_flag:
+                    state_arg = self.env_arg.getState()
+                    qvalues_arg = self.net_arg.predict(state_arg)
+                    action_arg = np.argmax(qvalues_arg[0])
+                    self.env_arg.act_online(action_arg, j)
+                    if self.env_arg.terminal_flag:
                         break
                 # act_name = self.env_act.current_text['tokens'][i]
-                # act_obj = [act_name]
+                # act_arg = [act_name]
                 act_idx = i
                 obj_idxs = []
-                sent_words = self.env_obj.current_text['tokens']
+                sent_words = self.env_arg.current_text['tokens']
                 tmp_num = self.context_len if len(sent_words) >= self.context_len else len(sent_words)
                 for j in range(tmp_num):
-                    if self.env_obj.state[j, -1] == 2:
-                        #act_obj.append(sent_words[j])
+                    if self.env_arg.state[j, -1] == 2:
+                        #act_arg.append(sent_words[j])
                         if j == len(sent_words) - 1:
                             j = -1
                         obj_idxs.append(j)
                 if len(obj_idxs) == 0:
-                    # act_obj.append(sent_words[-1])
+                    # act_arg.append(sent_words[-1])
                     obj_idxs.append(-1)
                 # ipdb.set_trace()
                 si, ai = self.env_act.current_text['word2sent'][i]
                 ai += len(sents[si]['last_sent'])
                 sents[si]['acts'].append({'act_idx': ai, 'obj_idxs': [obj_idxs, []],
                                             'act_type': 1, 'related_acts': []})
-                # act_seq.append(act_obj)
+                # act_seq.append(act_arg)
             if self.env_act.terminal_flag:
                 break
         # for k, v in act_seq.iteritems():
@@ -130,7 +133,7 @@ class EASGUI(wx.Frame):
         in_box = self.create_static_sizer('Input Texts', self.in_text)
         out1_box = self.create_static_sizer('Output Results', self.out1_text)
         # out2_box = self.create_static_sizer('Action Sequence', self.out2_text)
-        choice_box = self.create_boxsizer([self.show_name('Act/Arg:'), self.act_obj_choice])
+        choice_box = self.create_boxsizer([self.show_name('Act/Arg:'), self.act_arg_choice])
         type_box = self.create_boxsizer([self.show_name('ActType/ArgType:'), self.item_type])
         # act_box = self.create_boxsizer([self.show_name('ActSeqNum:'), self.act_idx_in])
         sent_box = self.create_boxsizer([self.show_name('SentId:'), self.sent_idx_in])
@@ -161,7 +164,7 @@ class EASGUI(wx.Frame):
         self.in_text = self.create_textbox((400, 400))
         self.out1_text = self.create_textbox((400, 400), style=wx.TE_MULTILINE)# | wx.TE_READONLY)
         # self.out2_text = self.create_textbox((400, 200), style=wx.TE_MULTILINE)# | wx.TE_READONLY)
-        self.act_obj_choice = self.create_textbox(style=wx.TE_LEFT)
+        self.act_arg_choice = self.create_textbox(style=wx.TE_LEFT)
         self.item_type = self.create_textbox(style=wx.TE_LEFT)
         self.item_type.SetValue('1')
         # self.act_idx_in = self.create_textbox(style=wx.TE_LEFT)
@@ -229,11 +232,11 @@ class EASGUI(wx.Frame):
             # self.out1_text.AppendText('NO%d: %s\n'%(i, ' '.join(sents[i]['this_sent'])))
             for k, act in enumerate(sents[i]['acts']):
                 objs = []
-                for oi in act['obj_idxs'][0]+act['obj_idxs'][1]:
+                for oi in act['obj_idxs'][0] + act['obj_idxs'][1]:
                     if oi >= 0:
                         objs.append(words[oi])
                     else:
-                        objs.append('UNKNOWN_TOKEN')
+                        objs.append('UNK')
                 act2sent[count_act] = [i, k]
                 self.out1_text.AppendText(
                     '<%d>  %s (%s)    '%(count_act + 1, words[act['act_idx']], ', '.join(objs)))
@@ -282,7 +285,7 @@ class EASGUI(wx.Frame):
 
 
     def OnRevise(self, event):
-        choice = self.act_obj_choice.GetValue().strip()
+        choice = self.act_arg_choice.GetValue().strip()
         item_type = self.item_type.GetValue().strip()
         act_idx = self.act_idx_in.GetValue().strip()
         sent_idx = self.sent_idx_in.GetValue().strip()
@@ -365,7 +368,7 @@ class EASGUI(wx.Frame):
 
 
     def clear_boxes(self):
-        self.act_obj_choice.Clear()
+        self.act_arg_choice.Clear()
         self.act_idx_in.Clear()
         self.sent_idx_in.Clear()
         self.word_idx_in.Clear()
@@ -374,7 +377,7 @@ class EASGUI(wx.Frame):
 
 
     def OnInsert(self, event):
-        choice = self.act_obj_choice.GetValue().strip()
+        choice = self.act_arg_choice.GetValue().strip()
         item_type = self.item_type.GetValue().strip()
         act_idx = self.act_idx_in.GetValue().strip()
         sent_idx = self.sent_idx_in.GetValue().strip()
@@ -466,10 +469,11 @@ class EASGUI(wx.Frame):
 
 
 class MyApp(wx.App):
-    def __init__(self, redirect=True, agent=''):
+    def __init__(self, agent, redirect=True):
+        self.agent = agent
         c_time = time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))
         wx.App.__init__(self, redirect)
-        self.agent = agent
+        
         
     def OnInit(self):
         self.frame = EASGUI(self.agent)
@@ -484,9 +488,10 @@ class MyApp(wx.App):
         
 if __name__ == '__main__':
     args = preset_args()
+    K.set_image_data_format('channels_first')
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=args.gpu_fraction)
     set_session(tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)))
     # with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess: # for tensorflow
     agent = EASDRL_init(args, sess='') # for keras 
-    app = MyApp(redirect=False, agent=agent)
+    app = MyApp(agent, redirect=False)
     app.MainLoop()    

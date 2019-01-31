@@ -12,6 +12,7 @@ class Environment:
         print('Initializing the Environment...')  
         self.domain = args.domain
         self.dis_dim = args.dis_dim
+        self.tag_dim = args.tag_dim
         self.word_dim = args.word_dim
         self.num_words = args.num_words
         self.action_rate = args.action_rate
@@ -31,6 +32,7 @@ class Environment:
         self.max_data_char_len = 0
         self.max_data_sent_len = 0
         self.agent_mode = agent_mode # args.agent_mode
+        self.context_len = args.context_len
         if not args.gui_mode:
             if self.agent_mode == 'arg':
                 self.read_arg_sents()
@@ -53,7 +55,7 @@ class Environment:
                 text['tokens'].extend(words)
                 text['sents'].append(words)
 
-        sent_vec = np.zeros([self.num_words, self.word_dim + 1])
+        sent_vec = np.zeros([self.num_words, self.word_dim + self.tag_dim])
         for i, w in enumerate(text['tokens']):
             if i >= self.num_words:
                 break
@@ -82,7 +84,7 @@ class Environment:
             for k, v in word2sent.iteritems():
                 if v[0] == sent_idx:
                     word_ids.append(k)
-        words = last_sent + this_sent + ['UNKNOWN_TOKEN']
+        words = last_sent + this_sent + ['UNK']
         end_idx = max(word_ids) # the last index of words of these two sents
         start_idx = min(word_ids)
         sent_len = len(words)
@@ -90,7 +92,7 @@ class Environment:
         position = np.zeros(sent_len, dtype=np.int32)
         position.fill(act_idx - start_idx)
         distance = np.abs(np.arange(sent_len) - position)
-        sent_vec = np.zeros([self.context_len, self.emb_dim])
+        sent_vec = np.zeros([self.context_len, self.word_dim + self.dis_dim + self.tag_dim])
         for i, w in enumerate(words):
             if i >= self.context_len:
                 break
@@ -103,7 +105,8 @@ class Environment:
 
 
     def act_online(self, action, word_ind):
-        self.state[word_ind, -1] = action + 1
+        #self.state[word_ind, -1] = action + 1
+        self.state[word_ind, -self.tag_dim:] = action + 1
         if word_ind + 1 >= len(self.current_text['tokens']):
             self.terminal_flag = True
 

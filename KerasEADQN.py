@@ -10,22 +10,23 @@ from keras.layers.normalization import BatchNormalization
 
 
 class DeepQLearner:
-    def __init__(self, args, agent_name):
+    def __init__(self, args, agent_mode, data_format):
         print('Initializing the DQN...')
         self.word_dim = args.word_dim
+        self.tag_dim = args.tag_dim
         self.dropout = args.dropout
         self.optimizer = args.optimizer
         self.dense_dim = args.dense_dim
         self.batch_size = args.batch_size
-        self.discount_rate = args.discount_rate
+        self.gamma = args.gamma
         self.learning_rate = args.learning_rate
         self.num_actions = args.num_actions
         self.num_filters = args.num_filters
-        self.agent_mode = args.agent_mode
-        if agent_name == 'act':
+        self.data_format = data_format
+        if agent_mode == 'act':
             self.num_words = args.num_words
             self.emb_dim = args.word_dim + args.tag_dim
-        elif agent_name == 'arg':
+        elif agent_mode == 'arg':
             self.num_words = args.context_len
             self.emb_dim = args.word_dim + args.dis_dim + args.tag_dim
         self.build_dqn()
@@ -33,9 +34,10 @@ class DeepQLearner:
 
     def build_dqn(self):
         #ipdb.set_trace()
-        fw = self.emb_dim  #filter width
+        fw = self.emb_dim - 1  #filter width
         fn = self.num_filters  #filter num
-        inputs = Input(shape=(self.num_words, self.emb_dim, 1))
+        # inputs = Input(shape=(self.num_words, self.emb_dim, 1))
+        inputs = Input(shape=(1, self.num_words, self.emb_dim))
 
         bi_gram = Conv2D(fn, (2, fw), padding='valid', kernel_initializer='glorot_normal')(inputs)
         #bi_gram = BatchNormalization()(bi_gram)
@@ -92,13 +94,16 @@ class DeepQLearner:
 
     def train(self, minibatch):
         # expand components of minibatch
-        # channel_first
         prestates, actions, rewards, poststates, terminals = minibatch
         
-        post_input = poststates[:, :, :, np.newaxis] #np.reshape(poststates, [-1, self.num_words, self.emb_dim, 1])
-        postq = self.target_model.predict_on_batch(post_input)
+        if self.data_format == 'channels_last':
+            post_input = poststates[:, :, :, np.newaxis] # np.reshape(poststates, [-1, self.num_words, self.emb_dim, 1])
+            pre_input = prestates[:, :, :, np.newaxis] # np.reshape(prestates, [-1, self.num_words, self.emb_dim, 1])
+        else:
+            post_input = poststates[np.newaxis, :, :, :] 
+            pre_input = prestates[np.newaxis, :, :, :]
 
-        pre_input = prestates[:, :, :, np.newaxis] #np.reshape(prestates, [-1, self.num_words, self.emb_dim, 1])
+        postq = self.target_model.predict_on_batch(post_input)
         targets = self.model.predict_on_batch(pre_input)
         # calculate max Q-value for each poststate  
         maxpostq = np.max(postq, axis=1)
@@ -108,13 +113,19 @@ class DeepQLearner:
             if terminals[i]:  
                 targets[i, action] = float(rewards[i])
             else:  
-                targets[i, action] = float(rewards[i]) + self.discount_rate * maxpostq[i]
+                targets[i, action] = float(rewards[i]) + self.gamma * maxpostq[i]
 
         self.model.train_on_batch(pre_input, targets)
 
 
     def predict(self, current_state):
-        state_input = current_state[np.newaxis, :, :, np.newaxis] 
+        # word_vec = current_state[:, -1]
+        # op_vec = np.reshape(current_state[:, -1], [-1, 1])
+        # expand_state = np.concatenate((word_vec, np.tile(op_vec, [1, self.tag_dim])), axis=-1)
+        if self.data_format == 'channels_last':
+            state_input = current_state[np.newaxis, :, :, np.newaxis] 
+        else:
+            state_input = current_state[np.newaxis, np.newaxis, :, :] 
         qvalues = self.model.predict_on_batch(state_input)
         return qvalues
 
