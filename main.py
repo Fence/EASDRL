@@ -79,7 +79,7 @@ def preset_args():
     mainarg.add_argument("--start_fold",            type=int,   default=0,      help='')
     mainarg.add_argument("--end_fold",              type=int,   default=5,      help='')
     mainarg.add_argument("--k_fold",                type=int,   default=5,      help="")
-    mainarg.add_argument("--result_dir",            type=str,   default="test", help="")
+    mainarg.add_argument("--result_dir",            type=str,   default='test', help="")
     mainarg.add_argument("--agent_mode",            type=str,   default='act',  help='')
     
     return parser.parse_args()
