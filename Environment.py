@@ -138,8 +138,8 @@ class Environment:
             act_text['tags'] = np.ones(len(indata[i]['words']), dtype=np.int32)
             act_text['act2related'] = {}
             for acts in indata[i]['acts']:
-                act_text['act2related'][acts['act_ind']] = acts['related_acts']
-                act_text['tags'][acts['act_ind']] = acts['act_type'] + 1 # 2, 3, 4
+                act_text['act2related'][acts['act_idx']] = acts['related_acts']
+                act_text['tags'][acts['act_idx']] = acts['act_type'] + 1 # 2, 3, 4
             # f.write('text: %d\n' % i)
             # f.write('tokens: \n{}\n'.format(act_text['tokens']))
             # f.write('sents: \n{}\n'.format(act_text['sents']))
