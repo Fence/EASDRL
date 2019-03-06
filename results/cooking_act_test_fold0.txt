@@ -6,23 +6,23 @@ batch_size: 32
 context_len: 100
 dense_dim: 256
 dis_dim: 50
-discount_rate: 0.9
 display_training_result: 1
 domain: cooking
 dropout: 0.5
-end_fold: 10
-epochs: 2
+end_fold: 5
+epochs: 20
 exploration_decay_steps: 1000
 exploration_rate_end: 0.1
 exploration_rate_start: 1
 exploration_rate_test: 0.0
-filter_act_idx: 1
+filter_act_ind: 1
 fold_id: 0
-gpu_fraction: 0.24
+gamma: 0.9
+gpu_fraction: 0.2
 gui_mode: False
-k_fold: 10
-k_fold_indices: data/indices/cooking_act_10_fold_indices.pkl
-learning_rate: 0.0025
+k_fold: 5
+k_fold_indices: data/indices/cooking_act_5_fold_indices.pkl
+learning_rate: 0.001
 load_replay: 0
 load_weights: False
 model_dim: 50
@@ -50,9 +50,10 @@ target_steps: 5
 train_episodes: 50
 train_frequency: 1
 train_repeat: 1
-train_steps: 52500
+train_steps: 46500
+use_act_att: 0
 use_act_rate: 1
-valid_steps: 5500
-word2vec: <gensim.models.keyedvectors.Word2VecKeyedVectors object at 0x7fde16f04bd0>
+valid_steps: 11500
+word2vec: <gensim.models.keyedvectors.Word2VecKeyedVectors object at 0x7f51202f3940>
 word_dim: 50
 

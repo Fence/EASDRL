@@ -142,11 +142,11 @@ def get_time():
 
 
 def save_pkl(obj, path):
-    with open(path, 'w') as f:
+    with open(path, 'wb') as f:
         pickle.dump(obj, f)
 
 
 def load_pkl(path):
-    with open(path) as f:
+    with open(path, 'rb') as f:
         obj = pickle.load(f)
         return obj

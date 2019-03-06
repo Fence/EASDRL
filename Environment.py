@@ -4,7 +4,7 @@ import ipdb
 import time
 import pickle
 import numpy as np
-from utils import ten_fold_split_ind, index2data
+from utils import ten_fold_split_ind, index2data, save_pkl, load_pkl
 
 
 class Environment:
@@ -116,16 +116,12 @@ class Environment:
         if self.domain == 'all':
             indata = []
             for domain in ['win2k', 'cooking', 'wikihow']:
-                tmp_data = pickle.load(open('data/%s_labeled_text_data.pkl' % domain, 'r'))
-                if domain == 'wikihow':
-                    tmp_data = tmp_data[:150]
+                tmp_data = load_pkl('data/%s_labeled_text_data.pkl' % domain)
                 indata.extend(tmp_data)
         else:
-            indata = pickle.load(open('data/%s_labeled_text_data.pkl' % self.domain, 'r'))
-            if self.domain == 'wikihow': # for wikihow data
-                indata = indata[:150]
+            indata = load_pkl('data/%s_labeled_text_data.pkl' % self.domain)
+        
         act_texts = []
-        # f = open('data/%s_act_texts.txt' % self.domain, 'w')
         for i in range(len(indata)):
             if len(indata[i]['words']) == 0:
                 continue
@@ -140,14 +136,6 @@ class Environment:
             for acts in indata[i]['acts']:
                 act_text['act2related'][acts['act_idx']] = acts['related_acts']
                 act_text['tags'][acts['act_idx']] = acts['act_type'] + 1 # 2, 3, 4
-            # f.write('text: %d\n' % i)
-            # f.write('tokens: \n{}\n'.format(act_text['tokens']))
-            # f.write('sents: \n{}\n'.format(act_text['sents']))
-            # f.write('acts: \n{}\n'.format(act_text['acts']))
-            # f.write('tags: \n{}\n'.format(act_text['tags']))
-            # f.write('word2sent: \n{}\n\n'.format(act_text['word2sent']))
-            # f.write('sent_acts: \n{}\n\n'.format(act_text['sent_acts']))
-
             self.create_matrix(act_text)
             act_texts.append(act_text)
 
@@ -163,21 +151,16 @@ class Environment:
         print('\n\ntraining texts: %d\tvalidation texts: %d' % (len(self.train_data), len(self.valid_data)))
         print('max_data_sent_len: %d\tmax_data_char_len: %d' % (self.max_data_sent_len, self.max_data_char_len))
         print('self.train_steps: %d\tself.valid_steps: %d\n\n' % (self.train_steps, self.valid_steps))
-        # f.close()
 
 
     def read_arg_sents(self):
         if self.domain == 'all':
             indata = []
             for domain in ['win2k', 'cooking', 'wikihow']:
-                _, __, tmp_data = pickle.load(open('data/refined_%s_data.pkl' % domain, 'r'))
-                if domain == 'wikihow':
-                    tmp_data = tmp_data[:150]
+                tmp_data = load_pkl('data/refined_%s_data.pkl' % domain)[-1]
                 indata.extend(tmp_data)
         else:
-            _, __, indata = pickle.load(open('data/refined_%s_data.pkl' % self.domain, 'r'))
-            if self.domain == 'wikihow': # for wikihow data
-                indata = indata[:150]
+            indata = load_pkl('data/refined_%s_data.pkl' % self.domain)[-1]
         arg_sents = []
         #ipdb.set_trace()
         for i in range(len(indata)):

@@ -2,6 +2,7 @@ import os
 import ipdb
 import numpy as np
 import tensorflow as tf
+from functools import reduce
 from utils import save_pkl, load_pkl
 from tensorflow.contrib.layers.python.layers import initializers
 
@@ -21,9 +22,6 @@ class DeepQLearner:
         else: # agent_mode == 'arg'
             self.num_words = args.context_len
             self.word_dim = args.word_dim + args.dis_dim
-        self.init_tag_emb = np.zeros([self.num_actions + 1, self.tag_dim], dtype=np.float32)
-        for i in range(self.num_actions+1):
-            self.init_tag_emb[i] = i
         with tf.variable_scope(agent_mode):
             self.build_dqn()
 
@@ -65,9 +63,11 @@ class DeepQLearner:
 
 
     def build_dqn(self):
-        #initializer = tf.contrib.layers.xavier_initializer()
+        # prepare repeat-representation for operations
+        self.init_tag_emb = np.zeros([self.num_actions + 1, self.tag_dim], dtype=np.float32)
+        for i in range(self.num_actions + 1):
+            self.init_tag_emb[i] = i
         initializer = tf.contrib.layers.xavier_initializer_conv2d()
-        #initializer = tf.truncated_normal_initializer(0, 0.02)
         activation_fn = tf.nn.relu
 
         # training network
