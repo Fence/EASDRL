@@ -43,7 +43,7 @@ If you want to change the domain from 'cooking' to 'win2k' or 'wikihow', try:
 $ python main.py --domain win2k
 ```
 
-It may takes 2-4 hours for 'win2k', 10-15 hours for 'cooking' and 20-30 hours for 'wikihow' in our computer with TITAN Xp GPU. Change the size of replay memory, GPU fraction or number of epochs according to your servers.
+It may takes 2-4 hours for "win2k", 10-15 hours for "cooking" and 20-30 hours for "wikihow" in our computer with TITAN Xp GPU. Change the size of replay memory, GPU fraction or number of epochs according to your servers.
 
 
 
@@ -79,6 +79,8 @@ The following {domain} can be one of "cooking", "wikihow" and "win2k"
 
 
 
-### Pre-trained data
+### Others
 
 1. ``wordvec_dim*`` is pre-trained word2vec 
+2. There are some simple text in ``./data/online_test/``.  They are originally used for online interaction test.
+
