@@ -75,7 +75,7 @@ The following {domain} can be one of "cooking", "wikihow" and "win2k"
 2. ``{domain}_arg_pos.pkl`` contains the part-of-speech data for action argument extractor
 
 ### Unlabeled data 
-1. ``home_and_garden_500_words_with_tile.pkl`` contains more than 15k unlabeled texts from [WikiHow Home and Garden](https://www.wikihow.com/Category:Home-and-Garden)  category.
+1. ``home_and_garden_500_words_with_tile.pkl`` contains more than 15k unlabeled texts from [WikiHow Home and Garden](https://www.wikihow.com/Category:Home-and-Garden).
 
 
 
