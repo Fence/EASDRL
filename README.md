@@ -18,7 +18,7 @@
 * PS: There should be a folder named 'weights', but it was automatically removed by github since it is empty. Remember to add it if you want to train a new model.
 
 * ```bash
-  mkdir weights
+  $ mkdir weights
   ```
 
 
@@ -83,4 +83,3 @@ The following {domain} can be one of "cooking", "wikihow" and "win2k"
 
 1. ``wordvec_dim*`` is pre-trained word2vec 
 2. There are some simple text in ``./data/online_test/``.  They are originally used for online interaction test.
-
