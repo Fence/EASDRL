@@ -1,11 +1,19 @@
-# coding:utf-8
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+################################################################################
+# Project:  Extracting Action Sequences Based on Deep Reinforcement Learning
+# Module:   main
+# Author:   Wenfeng Feng 
+# Time:     2017.12
+################################################################################
+
 import time
 import ipdb
 import pickle
 import argparse
 import tensorflow as tf
 
-from utils import get_time, plot_results, str2bool
+from utils import get_time, plot_results, str2bool, print_args
 from Agent import Agent
 from EADQN import DeepQLearner
 # from KerasEADQN import DeepQLearner
@@ -16,6 +24,9 @@ from gensim.models import KeyedVectors
 
 
 def preset_args():
+    """
+    Preset args
+    """
     parser = argparse.ArgumentParser()
 
     envarg = parser.add_argument_group('Environment')
@@ -25,6 +36,7 @@ def preset_args():
     envarg.add_argument("--word_dim",       type=int,       default=50,         help="Dimension of word embedding")
     envarg.add_argument("--tag_dim",        type=int,       default=50,         help="Dimension of tag embedding")
     envarg.add_argument("--dis_dim",        type=int,       default=50,         help="Dimension of distance embedding")
+    envarg.add_argument("--pos_dim",        type=int,       default=50,         help="Dimension of part-of-speech embedding")
     envarg.add_argument("--context_len",    type=int,       default=100,        help="Maximum number of words in the context (of an action name)")
     envarg.add_argument("--reward_assign",  type=list,      default=[1, 2, 3],  help="Reward for essential, optional and exclusive items")
     envarg.add_argument("--reward_base",    type=float,     default=50.0,       help="For reward scaling")
@@ -32,6 +44,7 @@ def preset_args():
     envarg.add_argument("--action_rate",    type=float,     default=0.10,       help="Percentage of action names, a priori")
     envarg.add_argument("--use_act_rate",   type=str2bool,  default=True,       help="Whether or not use action_rate, for name extractor")
     envarg.add_argument("--use_act_att",    type=str2bool,  default=False,      help="Whether or not use the given action name to compute attention, for arguments extractor")
+    envarg.add_argument("--use_pos",        type=str2bool,  default=True,       help="Whether or not use the part-of-speech of words as input")
     
     memarg = parser.add_argument_group('Replay memory')
     memarg.add_argument("--positive_rate",      type=float,     default=0.9,    help="Percentage of positive samples in a minibatch")
@@ -84,7 +97,10 @@ def preset_args():
 
 
 def args_init(args):
-    args.word2vec = KeyedVectors.load_word2vec_format('data/mymodel-new-5-%d'%args.model_dim, binary=True)
+    """
+    args initialization
+    """
+    args.word2vec = KeyedVectors.load_word2vec_format('data/wordvec_dim%d'%args.model_dim, binary=True)
     if args.load_weights:
         args.exploration_rate_start = args.exploration_rate_end
     if args.agent_mode == 'arg':
@@ -100,23 +116,32 @@ def args_init(args):
 
 
 def main(args):
+    """
+    main function, build, train, validate, save and load model
+    """
     start = time.time()
     print('Current time is: %s' % get_time())
     print('Starting at main...')
+    # store k-fold cross-validation results, including recall, precision, f1 and average reward
     fold_result = {'rec': [], 'pre': [], 'f1': [], 'rw': []}
 
+    # one can continue to train model from the start_fold rather than fold 0 
     for fi in range(args.start_fold, args.end_fold):
         fold_start = time.time()
         args.fold_id = fi
+        if args.fold_id == args.start_fold:
+            # Initialize environment and replay memory
+            env_act = Environment(args, args.agent_mode)
+            mem_act = ReplayMemory(args, args.agent_mode)
+        else:
+            env_act.get_fold_data(args.fold_id)
+            mem_act.reset()
         gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=args.gpu_fraction)
         # set_session(tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))) # for keras
-
         with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
             # ipdb.set_trace()
-            # Initial environment, replay memory, deep_q_net and agent
-            env_act = Environment(args, args.agent_mode)
+            # Initialize deep_q_net and agent
             net_act = DeepQLearner(args, sess, args.agent_mode)
-            mem_act = ReplayMemory(args, args.agent_mode)
             agent = Agent(env_act, mem_act, net_act, args)
 
             # loop over epochs
@@ -124,13 +149,8 @@ def main(args):
             training_result = {'rec': [], 'pre': [], 'f1': [], 'loss': [], 'rw': []}
             log_epoch = 0
             with open("%s_fold%d.txt" % (args.result_dir, args.fold_id), 'w') as outfile:
-                print('\n Arguments:')
-                outfile.write('\n Arguments:\n')
-                for k, v in sorted(args.__dict__.items(), key=lambda x:x[0]):
-                    print('{}: {}'.format(k, v))
-                    outfile.write('{}: {}\n'.format(k, v))
-                print('\n')
-                outfile.write('\n')
+                # print all args to the screen and outfile
+                print_args(args, outfile)
 
                 if args.load_weights:
                     print('Loading weights ...')
@@ -138,6 +158,7 @@ def main(args):
                     net_act.load_weights(filename)  
 
                 for epoch in range(args.start_epoch, args.start_epoch + args.epochs):
+                    # test the model every args.train_episodes or at the end of an epoch
                     num_test = -1
                     env_act.train_epoch_end_flag = False
                     while not env_act.train_epoch_end_flag:
@@ -160,27 +181,30 @@ def main(args):
                             epoch_result['pre'].append(pre)
                             epoch_result['rw'].append(rw)
                             log_epoch = epoch
-                            outfile.write('\n\n Best f1 value: {}  best epoch: {}\n'.format(epoch_result, log_epoch))
-                            print('\n\n Best f1 value: {}  best epoch: {}\n'.format(epoch_result, log_epoch))
+                            outfile.write('\n\n Best f1 score: {}  best epoch: {}\n'.format(epoch_result, log_epoch))
+                            print('\n\n Best f1 score: {}  best epoch: {}\n'.format(epoch_result, log_epoch))
                     
                     # if no improvement after args.stop_epoch_gap, break
                     if epoch - log_epoch >= args.stop_epoch_gap:
-                        outfile.write('\n\nBest f1 value: {}  best epoch: {}\n'.format(epoch_result, log_epoch))
+                        outfile.write('\n\nBest f1 score: {}  best epoch: {}\n'.format(epoch_result, log_epoch))
                         print('\nepoch: %d  result_dir: %s' % (epoch, args.result_dir))
                         print('-----Early stopping, no improvement after %d epochs-----\n' % args.stop_epoch_gap)
                         break
                 if args.save_replay:
                     mem_act.save(args.save_replay_name, args.save_replay_size)
                 
-                filename = '%s_fold%d_training_process.pdf'%(args.result_dir, args.fold_id)
-                plot_results(epoch_result, args.domain, filename)
-                outfile.write('\n\n training process:\n{}\n\n'.format(epoch_result))
+                # plot the training process results if you want
+                # filename = '%s_fold%d_training_process.pdf'%(args.result_dir, args.fold_id)
+                # plot_results(epoch_result, args.domain, filename)
+                # outfile.write('\n\n training process:\n{}\n\n'.format(epoch_result))
 
+                # find out the best f1 score in the current fold, add it to fold_result
                 best_ind = epoch_result['f1'].index(max(epoch_result['f1']))
                 for k in epoch_result:
                     fold_result[k].append(epoch_result[k][best_ind])
                     outfile.write('{}: {}\n'.format(k, fold_result[k]))
                     print(('{}: {}\n'.format(k, fold_result[k])))
+                # compute the average f1 and average reward of all fold results up to now
                 avg_f1 = sum(fold_result['f1']) / len(fold_result['f1'])
                 avg_rw = sum(fold_result['rw']) / len(fold_result['rw'])
                 outfile.write('\nAvg f1: {}  Avg reward: {}\n'.format(avg_f1, avg_rw))
@@ -194,7 +218,6 @@ def main(args):
     end = time.time()
     print('Total time cost: %ds' % (end - start))
     print('Current time is: %s\n' % get_time())
-
 
 
 

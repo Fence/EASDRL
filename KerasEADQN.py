@@ -1,3 +1,12 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+################################################################################
+# Project:  Extracting Action Sequences Based on Deep Reinforcement Learning
+# Module:   KerasEADQN
+# Author:   Wenfeng Feng 
+# Time:     2017.12
+################################################################################
+
 import ipdb
 import keras
 import numpy as np
@@ -10,6 +19,9 @@ from keras.layers.normalization import BatchNormalization
 
 
 class DeepQLearner:
+    """
+    Deep Q-Network, in keras
+    """
     def __init__(self, args, agent_mode, data_format):
         print('Initializing the DQN...')
         self.word_dim = args.word_dim
@@ -33,29 +45,32 @@ class DeepQLearner:
 
 
     def build_dqn(self):
-        #ipdb.set_trace()
-        fw = self.emb_dim - 1  #filter width
+        """
+        Build Text-CNN
+        """
+        # ipdb.set_trace()
+        fw = self.emb_dim  #filter width
         fn = self.num_filters  #filter num
         # inputs = Input(shape=(self.num_words, self.emb_dim, 1))
         inputs = Input(shape=(1, self.num_words, self.emb_dim))
 
         bi_gram = Conv2D(fn, (2, fw), padding='valid', kernel_initializer='glorot_normal')(inputs)
-        #bi_gram = BatchNormalization()(bi_gram)
+        # bi_gram = BatchNormalization()(bi_gram)
         bi_gram = Activation(activation='relu')(bi_gram)
         bi_gram = MaxPooling2D((self.num_words - 1, 1), strides=(1, 1), padding='valid')(bi_gram)
 
         tri_gram = Conv2D(fn, (3, fw), padding='valid', kernel_initializer='glorot_normal')(inputs)
-        #tri_gram = BatchNormalization()(tri_gram)
+        # tri_gram = BatchNormalization()(tri_gram)
         tri_gram = Activation(activation='relu')(tri_gram)
         tri_gram = MaxPooling2D((self.num_words - 2, 1), strides=(1, 1), padding='valid')(tri_gram)
 
         four_gram = Conv2D(fn, (4, fw), padding='valid', kernel_initializer='glorot_normal')(inputs)
-        #four_gram = BatchNormalization()(four_gram)
+        # four_gram = BatchNormalization()(four_gram)
         four_gram = Activation(activation='relu')(four_gram)
         four_gram = MaxPooling2D((self.num_words - 3, 1), strides=(1, 1), padding='valid')(four_gram)
 
         five_gram = Conv2D(fn, (5, fw), padding='valid', kernel_initializer='glorot_normal')(inputs)
-        #five_gram = BatchNormalization()(five_gram)
+        # five_gram = BatchNormalization()(five_gram)
         five_gram = Activation(activation='relu')(five_gram)
         five_gram = MaxPooling2D((self.num_words - 4, 1), strides=(1, 1), padding='valid')(five_gram)
 
@@ -72,6 +87,9 @@ class DeepQLearner:
 
 
     def compile_model(self):
+        """
+        Choose optimizer and compile model
+        """
         if self.optimizer == 'sgd':
             opt = keras.optimizers.SGD(lr=self.learning_rate, momentum=0.9, decay=0.9, nesterov=True)
         elif self.optimizer == 'adam':
@@ -89,10 +107,16 @@ class DeepQLearner:
 
 
     def update_target_network(self):
+        """
+        Update target DQN
+        """
         self.target_model.set_weights(self.model.get_weights())
 
 
     def train(self, minibatch):
+        """
+        Train DQN with a mini-batch of samples
+        """
         # expand components of minibatch
         prestates, actions, rewards, poststates, terminals = minibatch
         
@@ -119,6 +143,9 @@ class DeepQLearner:
 
 
     def predict(self, current_state):
+        """
+        Predict Q-values
+        """
         # word_vec = current_state[:, -1]
         # op_vec = np.reshape(current_state[:, -1], [-1, 1])
         # expand_state = np.concatenate((word_vec, np.tile(op_vec, [1, self.tag_dim])), axis=-1)
@@ -131,10 +158,16 @@ class DeepQLearner:
 
 
     def save_weights(self, weight_dir):
+        """
+        Save weights
+        """
         self.model.save_weights(weight_dir)
         print('Saved weights to %s ...' % weight_dir)
 
 
     def load_weights(self, weight_dir):
+        """
+        Load weights
+        """
         self.model.load_weights(weight_dir)
         print('Loaded weights from %s ...' % weight_dir)

@@ -53,5 +53,32 @@ It may takes 2-4 hours for 'win2k', 10-15 hours for 'cooking' and 20-30 hours fo
 $ python gui.py
 ```
 
-It's the initial version, which is simple and maybe has some bugs. We will update it in the near future.  
+It's the initial version, which is simple and maybe has some bugs. We have a latest version which adopts Active Learning for labeling data. It can be run by:
 
+```bash
+$ python guiActiveLearning.py
+```
+
+
+
+## About the data
+
+The following {domain} can be one of "cooking", "wikihow" and "win2k"
+
+### Labeled data
+
+1. ``{domain}_labeled_text_data.pkl`` is the labeled data for action name extractor
+2. ``refined_{domain}_data.pkl`` is the labeled data for action argument extractor
+
+### POS data
+1. ``{domain}_dependency.pkl`` contains the part-of-speech data for action name extractor
+2. ``{domain}_arg_pos.pkl`` contains the part-of-speech data for action argument extractor
+
+### Unlabeled data 
+1. ``home_and_garden_500_words_with_tile.pkl`` contains more than 15k unlabeled texts from [WikiHow Home and Garden](https://www.wikihow.com/Category:Home-and-Garden)  category.
+
+
+
+### Pre-trained data
+
+1. ``wordvec_dim*`` is pre-trained word2vec 

@@ -1,9 +1,20 @@
-# coding:utf-8
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+################################################################################
+# Project:  Extracting Action Sequences Based on Deep Reinforcement Learning
+# Module:   ReplayMemory
+# Author:   Wenfeng Feng 
+# Time:     2017.12
+################################################################################
+
 import ipdb
 import pickle
 import numpy as np
 
 class ReplayMemory:
+    """
+    Replay memory
+    """
     def __init__(self, args, agent_mode):
         print('Initializing ReplayMemory...')
         self.size = args.replay_size
@@ -13,10 +24,11 @@ class ReplayMemory:
         elif agent_mode == 'arg':
             self.word_dim = args.word_dim + args.dis_dim
             self.num_words = args.context_len
+        self.state_dim = self.word_dim + 2
 
         self.actions = np.zeros(self.size, dtype = np.uint8)
         self.rewards = np.zeros(self.size, dtype = np.float16)
-        self.states = np.zeros([self.size, self.num_words, self.word_dim + 1], dtype=np.float16)
+        self.states = np.zeros([self.size, self.num_words, self.state_dim], dtype=np.float16)
         self.terminals = np.zeros(self.size, dtype = np.bool)
         self.priority = args.priority
         self.positive_rate = args.positive_rate
@@ -29,6 +41,9 @@ class ReplayMemory:
 
 
     def reset(self):
+        """
+        Reset the replay memory
+        """
         print('Reset the replay memory')
         self.actions *= 0
         self.rewards *= 0.0
@@ -39,6 +54,9 @@ class ReplayMemory:
 
         
     def add(self, action, reward, state, terminal):
+        """
+        Add action, reward, state, and terminal to replay memory
+        """
         self.actions[self.current] = action
         self.rewards[self.current] = reward
         self.states[self.current] = state
@@ -49,11 +67,12 @@ class ReplayMemory:
 
     def getMinibatch(self):
         """
+        Get a mini-batch of samples
         Memory must include poststate, prestate and history
-        Sample random indexes or with priority
+        Sampling random indexes or with priority
         """
-        prestates = np.zeros([self.batch_size, self.num_words, self.word_dim + 1])
-        poststates = np.zeros([self.batch_size, self.num_words, self.word_dim + 1])
+        prestates = np.zeros([self.batch_size, self.num_words, self.state_dim])
+        poststates = np.zeros([self.batch_size, self.num_words, self.state_dim])
         if self.priority:
             pos_amount =  int(self.positive_rate*self.batch_size) 
 
@@ -61,7 +80,7 @@ class ReplayMemory:
         count_pos = 0
         count_neg = 0
         count_circle = 0 
-        max_circles = 10*self.batch_size # max times for choosing positive samples or nagative samples
+        max_circles = 10 * self.batch_size # max times for choosing positive samples or nagative samples
         while len(indexes) < self.batch_size:
             # find random index 
             while True:
@@ -99,6 +118,9 @@ class ReplayMemory:
 
 
     def save(self, fname, size):
+        """
+        Save replay memory
+        """
         if size > self.size:
             size = self.size
         databag = {}
@@ -113,6 +135,9 @@ class ReplayMemory:
 
 
     def load(self, fname):
+        """
+        Load replay memory
+        """
         if not os.path.exists(fname):
             print("%s doesn't exist!" % fname)
             return

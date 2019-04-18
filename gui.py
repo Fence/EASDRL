@@ -1,3 +1,12 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+################################################################################
+# Project:  Extracting Action Sequences Based on Deep Reinforcement Learning
+# Module:   gui
+# Author:   Wenfeng Feng 
+# Time:     2017.12
+################################################################################
+
 import wx
 import re
 import time
@@ -20,7 +29,11 @@ from keras.backend.tensorflow_backend import set_session
 
 
 class Agent(object):
-    """docstring for Agent"""
+    """
+    RL Agent for online GUI
+    It's the initial version, and may have some bugs.
+    Refer to the guiActiveLearning.py for the latest version.
+    """
     def __init__(self, args, sess):
         self.env_act = Environment(args, 'act')
         self.net_act = DeepQLearner(args, 'act', 'channels_first')
@@ -79,14 +92,14 @@ class Agent(object):
                 # act_seq.append(act_arg)
             if self.env_act.terminal_flag:
                 break
-        # for k, v in act_seq.iteritems():
-        #     print(k, v)
-        # ipdb.set_trace()
         return sents
         
 
 
 def EASDRL_init(args, sess):
+    """
+    Initial EASDRL model, load weights and prepare RL Agent
+    """
     args.gui_mode = True
     args.fold_id = 0
     args.domain = 'cooking'
@@ -96,7 +109,6 @@ def EASDRL_init(args, sess):
     
     # ipdb.set_trace()
     agent = Agent(args, sess)
-
     if args.load_weights:
         print('Loading weights ...')
         if args.domain == 'all':
@@ -109,14 +121,15 @@ def EASDRL_init(args, sess):
             agent.net_act.load_weights(filename)
             filename = 'data/online_test/%s/arg/fold%d.h5' % (args.domain, args.fold_id)
             agent.net_arg.load_weights(filename)
-
     return agent
 
 
 
 
 class EASGUI(wx.Frame):
-    """docstring for EASGUI"""
+    """
+    A human-robot interaction environment
+    """
     def __init__(self, agent):
         wx.Frame.__init__(self, None, -1, "Action Sequence Extraction")
         self.panel = wx.Panel(self)
@@ -141,7 +154,8 @@ class EASGUI(wx.Frame):
         related_si_box = self.create_boxsizer([self.show_name('ExSentId:'), self.related_sent_idx])
         related_it_box = self.create_boxsizer([self.show_name('ExActId/ExArgId:'), self.related_item])
         # revise_boxes = self.create_boxsizer(
-        #    [choice_box, type_box, act_box, sent_box, word_box, related_si_box, related_it_box], gap=0, direction=wx.HORIZONTAL)
+        #    [choice_box, type_box, act_box, sent_box, word_box, related_si_box, related_it_box], 
+        #    gap=0, direction=wx.HORIZONTAL)
 
 
         main_sizer = wx.BoxSizer(wx.VERTICAL)
