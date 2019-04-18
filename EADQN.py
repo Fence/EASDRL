@@ -237,10 +237,15 @@ class DeepQLearner:
         tag_ind = current_state[:, -1][np.newaxis, :]
         pos_ind = current_state[:, -2][np.newaxis, :]
         word_emb = current_state[: ,:-2][np.newaxis, :]
-        qvalues = self.q.eval({ self.word_emb: word_emb,
-                                self.tag_emb_table: self.init_tag_emb,
-                                self.tag_ind: tag_ind,
-                                self.pos_ind: pos_ind})
+        if self.use_pos:
+            qvalues = self.q.eval({ self.word_emb: word_emb,
+                                    self.tag_emb_table: self.init_tag_emb,
+                                    self.tag_ind: tag_ind,
+                                    self.pos_ind: pos_ind})
+        else:
+            qvalues = self.q.eval({ self.word_emb: word_emb,
+                                    self.tag_emb_table: self.init_tag_emb,
+                                    self.tag_ind: tag_ind})
         return qvalues
 
 
